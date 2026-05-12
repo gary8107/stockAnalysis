@@ -188,7 +188,9 @@ This project was developed in collaboration with [Claude Code](https://claude.co
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) file（將於 Phase 1 完成時補上）
+MIT License — see [LICENSE](LICENSE) file.
+
+筆記內容（`assets/notes/*.md`）為個人對台灣公開 YouTube 投顧節目的觀察與整理，引述部分屬於公平使用範疇；程式碼採 MIT 授權。
 
 ---
 
