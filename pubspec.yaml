@@ -68,6 +68,9 @@ flutter:
   # 來源請用 sync_notes.sh 從 ~/Documents/AI_G/分析師筆記/ 同步過來
   assets:
     - assets/notes/
+    # 分析師節目縮圖（YouTube 直播 cover）+ 對照檔的 cartoon placeholder。
+    # 縮圖內容引用自公開 YouTube 節目，作為對應分析師的辨識用。
+    - assets/thumbnails/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

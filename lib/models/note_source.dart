@@ -23,6 +23,9 @@ class NoteSource {
   /// pubspec.yaml 註冊的 asset 路徑，runtime 用 rootBundle 載入
   final String assetPath;
 
+  /// 卡片縮圖：個別分析師用 YouTube 節目縮圖、對照檔用 cartoon placeholder
+  final String thumbnailAsset;
+
   /// 個別分析師 vs. 對照檔——之後 UI 樣式會分流（例如卡片顏色、icon）
   final NoteKind kind;
 
@@ -30,6 +33,7 @@ class NoteSource {
     required this.name,
     required this.description,
     required this.assetPath,
+    required this.thumbnailAsset,
     required this.kind,
   });
 
@@ -39,24 +43,28 @@ class NoteSource {
       name: '阮蕙慈',
       description: '大華國際投顧 · 金融阮實力',
       assetPath: 'assets/notes/阮蕙慈分析.md',
+      thumbnailAsset: 'assets/thumbnails/ruan-huici.jpg',
       kind: NoteKind.analyst,
     ),
     NoteSource(
       name: '李蜀芳',
       description: '永誠國際投顧 · 股市全芳位',
       assetPath: 'assets/notes/李蜀芳分析.md',
+      thumbnailAsset: 'assets/thumbnails/li-shufang.jpg',
       kind: NoteKind.analyst,
     ),
     NoteSource(
-      name: '陳昆仁（大仁哥）',
+      name: '陳昆仁(大仁哥)',
       description: '摩爾證券投顧 · 仁者無敵',
       assetPath: 'assets/notes/陳昆仁分析.md',
+      thumbnailAsset: 'assets/thumbnails/chen-kunjen.jpg',
       kind: NoteKind.analyst,
     ),
     NoteSource(
       name: '跨分析師對照重點',
       description: '同日多位分析師觀點比對',
       assetPath: 'assets/notes/分析師對照重點.md',
+      thumbnailAsset: 'assets/thumbnails/comparison.png',
       kind: NoteKind.comparison,
     ),
   ];
