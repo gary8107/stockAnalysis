@@ -37,6 +37,14 @@ class NoteSource {
     required this.kind,
   });
 
+  /// 純分析師（不含對照檔）—— HomePage 的分析師 Tab 用
+  static List<NoteSource> get analysts =>
+      all.where((e) => e.kind == NoteKind.analyst).toList(growable: false);
+
+  /// 對照檔 —— HomePage 載入主要內容用
+  static NoteSource get comparison =>
+      all.firstWhere((e) => e.kind == NoteKind.comparison);
+
   /// 寫死的來源清單。新增分析師時改這裡 + 更新 sync_notes.sh 即可
   static const List<NoteSource> all = [
     NoteSource(

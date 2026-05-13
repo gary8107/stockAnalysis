@@ -13,6 +13,6 @@ void main() {
     // 等所有 frame 跑完（包含 router 初始化）
     await tester.pumpAndSettle();
 
-    expect(find.text('分析師筆記'), findsOneWidget);
+    expect(find.text('分析師對照資料'), findsOneWidget);
   });
 }
