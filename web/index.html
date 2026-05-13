@@ -42,5 +42,36 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <!--
+    為什麼需要這段：
+    Flutter Web 預設會註冊 Service Worker（flutter_service_worker.js），
+    它會把 main.dart.js / assets/ 整包 cache 到瀏覽器，造成「deploy 完使用者重整還是看到舊版」的問題。
+    SW 偵測到新版本後會進入 waiting 狀態，要等所有分頁都關掉才會 activate，
+    對「每日更新分析師筆記」這種使用情境很不友善。
+
+    這段監聽邏輯做的事：
+    1. 等 SW ready（表示已有舊版在控制當前頁面）
+    2. 監聽 updatefound：當瀏覽器偵測到 flutter_service_worker.js 有變更時觸發
+    3. 等新 SW 安裝完成（state === 'installed'）且當前頁面是被舊 SW 控制（controller 存在）
+    4. → 立即 window.location.reload()，使用者最多看到舊版「閃一下」就自動拿到新版
+
+    注意：第一次訪問的新使用者（沒有舊 SW）→ controller 是 null → 不會觸發 reload（正確行為）
+  -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(function (registration) {
+        registration.addEventListener('updatefound', function () {
+          var newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', function () {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              window.location.reload();
+            }
+          });
+        });
+      });
+    }
+  </script>
 </body>
 </html>
