@@ -39,6 +39,13 @@ MarkdownStyleSheet appMarkdownStyle(BuildContext context) {
     tableHead: theme.textTheme.titleSmall?.copyWith(
       fontWeight: FontWeight.w600,
     ),
+    // 改用內容自然寬度而非預設的 FlexColumnWidth(1.0)。
+    // 為什麼：FlexColumnWidth 強制平均分配欄寬，在手機 (~390dp) 上 4 欄表格
+    // 每欄分到 ~80dp，中文 cell 會被切成多行（每行 1-2 字）。
+    // IntrinsicColumnWidth 讓每欄按內容寬度分配，cell 寬鬆 wrap 自然；
+    // 缺點是寬表格在手機可能超出畫面（之後 App 版手機重新設計時會解決）。
+    tableColumnWidth: const IntrinsicColumnWidth(),
+    tableCellsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     // 程式碼區塊用 container 色系，跟 blockquote 區分但保持風格一致
     codeblockDecoration: BoxDecoration(
       color: colors.surfaceContainerHighest,
