@@ -30,6 +30,26 @@ GitHub Actions 自動部署（`.github/workflows/deploy.yml`）：每次 push �
 
 ---
 
+## Screenshots
+
+### 首頁 — 對照中心化版面
+
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="HomePage — analyst comparison view with date tabs" width="900">
+</p>
+
+漸層 Banner +「3 位分析師」卡片（YouTube 節目縮圖）+ 日期 TabBar + 跨分析師對照內容；切換日期 Tab 不重新載檔。
+
+### 個別分析師頁
+
+<p align="center">
+  <img src="docs/screenshots/analyst.png" alt="Analyst detail page with date tabs and markdown rendering" width="900">
+</p>
+
+點任一張分析師卡片進入個別頁面，沿用同樣的日期 Tab 結構切換不同日期；陳昆仁同日有「盤前 / 盤後」兩場時，Tab 自動展開成兩行副標。
+
+---
+
 ## Tech Stack
 
 | 層 | 套件 | 選擇理由 |
