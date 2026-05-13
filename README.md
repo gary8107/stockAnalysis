@@ -24,7 +24,9 @@
 
 ## Live Demo
 
-> 部署計畫：`gary8107.github.io/stockAnalysis/` — Phase 5 完成後上線
+🚀 **<https://gary8107.github.io/stockAnalysis/>**
+
+GitHub Actions 自動部署（`.github/workflows/deploy.yml`）：每次 push 到 `main` 會自動 `flutter build web --release` + 推上 GitHub Pages，約 3~5 分鐘上線。
 
 ---
 

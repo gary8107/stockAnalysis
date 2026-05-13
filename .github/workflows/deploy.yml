@@ -1,0 +1,74 @@
+# Deploy Flutter Web to GitHub Pages
+#
+# 每次 push 到 main 自動觸發：build → 上傳 → 部署。
+# 部署完成的 URL：https://gary8107.github.io/stockAnalysis/
+#
+# 兩個關鍵設計：
+# 1. --base-href "/stockAnalysis/"：因為部署在子路徑而非 root，asset 路徑要對齊
+# 2. 把 index.html 複製成 404.html：GitHub Pages 沒 server-side rewrite，
+#    使用者直接打 /note/0 預設會 404；fallback 到 index 讓 go_router 接管
+
+name: Deploy to GitHub Pages
+
+on:
+  # 推到 main 自動部署
+  push:
+    branches: [main]
+  # 也允許從 Actions tab 手動觸發（debug 用）
+  workflow_dispatch:
+
+# GitHub Pages 需要的權限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 避免兩次 push 同時跑導致部署交錯
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # 鎖版本跟本地開發環境一致，避免 CI 跟本地漂移
+          flutter-version: '3.41.4'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build web
+        # base-href 必須跟 GitHub Pages 子路徑（repo 名稱）一致
+        run: flutter build web --release --base-href "/stockAnalysis/"
+
+      - name: SPA fallback (copy index.html to 404.html)
+        # GitHub Pages 預設找不到 path 會回 404.html；複製一份 index 讓 client-side
+        # router 接管，使用者就能直接 share https://.../stockAnalysis/note/0 這種網址
+        run: cp build/web/index.html build/web/404.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
