@@ -7,62 +7,59 @@
 // - 對照檔載一次、parse 出所有日期區段，切日期不重新載檔（純切 view）
 // - 分析師 Row 在桌機水平排、手機水平捲動（LayoutBuilder breakpoint 600dp）
 // - TabBar isScrollable 處理未來日期增加的情境
-// - State management 用 StatefulWidget + FutureBuilder + DefaultTabController
-//   都是 Flutter 內建，沒導 provider，Phase 2 再升級
+// - State management：Phase 2 起改用 HomeViewModel (ChangeNotifier) + DefaultTabController
+//   View 只訂閱 VM 狀態（idle/loading/success/error）並渲染，載入邏輯都在 VM
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../models/note_source.dart';
 import '../services/markdown_loader.dart';
 import '../services/markdown_section_parser.dart';
+import '../viewmodels/home_view_model.dart';
 import 'widgets/date_tab_bar.dart';
 import 'widgets/section_view.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  final _loader = MarkdownLoader();
-  final _parser = MarkdownSectionParser();
-  late Future<List<MarkdownSection>> _sectionsFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _sectionsFuture = _loadSections();
-  }
-
-  Future<List<MarkdownSection>> _loadSections() async {
-    final markdown = await _loader.load(NoteSource.comparison.assetPath);
-    return _parser.parse(markdown);
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // VM 在頁面層建立，頁面 dispose 自動清掉，不需要全域單例。
+    //
+    // 為什麼 create 內可以直接 ..load()：
+    // load() 第一次的 notifyListeners 發生在 await 之前、Consumer 還沒訂閱時，
+    // 不會觸發「build 中 setState」的錯誤；Consumer 之後訂閱時讀到的就是
+    // loading 狀態，UI 自然顯示 loading indicator。
     return Scaffold(
-      body: FutureBuilder<List<MarkdownSection>>(
-        future: _sectionsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('載入對照資料失敗：${snapshot.error}'),
-            );
-          }
-          final sections = snapshot.data ?? const [];
-          if (sections.isEmpty) {
-            return const Center(child: Text('沒有對照資料'));
-          }
-          return _HomeBody(sections: sections);
-        },
+      body: ChangeNotifierProvider<HomeViewModel>(
+        create: (context) => HomeViewModel(
+          loader: context.read<MarkdownLoader>(),
+          parser: context.read<MarkdownSectionParser>(),
+        )..load(),
+        child: Consumer<HomeViewModel>(
+          builder: (context, viewModel, _) {
+            switch (viewModel.state) {
+              // idle 理論上只會在 VM 剛建立、load() 還沒被呼叫的極短時間出現；
+              // 跟 loading 合併呈現轉圈圈，避免首幀閃過空白
+              case HomeLoadState.idle:
+              case HomeLoadState.loading:
+                return const Center(child: CircularProgressIndicator());
+              case HomeLoadState.error:
+                return Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('載入對照資料失敗：${viewModel.error}'),
+                );
+              case HomeLoadState.success:
+                final sections = viewModel.sections;
+                if (sections.isEmpty) {
+                  return const Center(child: Text('沒有對照資料'));
+                }
+                return _HomeBody(sections: sections);
+            }
+          },
+        ),
       ),
     );
   }
