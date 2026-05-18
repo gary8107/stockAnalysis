@@ -1,19 +1,22 @@
 // main.dart
 //
 // App 入口點。
-// 架構選型備忘：
+// 架構備忘：
 // - 路由：用 go_router（聲明式，類似 SwiftUI NavigationStack）
-// - 主題：先用 Material 3 + ColorScheme.fromSeed；深淺色跟系統
-// - DI：Phase 2 起用 provider 注入 services 給 ViewModel 取用
-//   無狀態 service（loader/parser）用 Provider，ViewModel 用 ChangeNotifierProvider
+// - 主題：Material 3 + ColorScheme.fromSeed；深淺色跟系統
+// - DI：Phase 2.5 起用 NotesApiService 取代 Phase 2 的 MarkdownLoader/Parser；
+//   service 用一般 Provider（無狀態），ViewModel 用 ChangeNotifierProvider
+//
+// 為什麼 StockAnalysisApp 接 optional notesApiService：
+// 讓 widget test 能注入 fake service，否則 test 環境下 http.get 拉不到
+// 真 endpoint 會 fail。預設仍 new 一個真正的 NotesApiService（web 同 origin
+// 走 `/api/notes.json`）。
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import 'models/note_source.dart';
-import 'services/markdown_loader.dart';
-import 'services/markdown_section_parser.dart';
+import 'services/notes_api_service.dart';
 import 'views/home_page.dart';
 import 'views/note_page.dart';
 
@@ -30,41 +33,31 @@ final _router = GoRouter(
       builder: (context, state) => const HomePage(),
     ),
     GoRoute(
-      path: '/note/:index',
+      // 用 analyst key 路由（取代 Phase 2 的 index 數字）：URL 可讀
+      // （/note/ruan-huici）、新增/刪除分析師也不會洗掉舊 URL；
+      // VM 內部用 key 對映 Analyst metadata
+      path: '/note/:key',
       builder: (context, state) {
-        // index 在 path 裡是 String，轉成 int 來查 NoteSource.all
-        // 之後如果改成用 name 當參數，這裡也只動一行
-        final index = int.tryParse(state.pathParameters['index'] ?? '');
-        if (index == null || index < 0 || index >= NoteSource.all.length) {
-          return const Scaffold(
-            body: Center(child: Text('找不到這份筆記')),
-          );
-        }
-        return NotePage(source: NoteSource.all[index]);
+        final key = state.pathParameters['key'] ?? '';
+        return NotePage(analystKey: key);
       },
     ),
   ],
 );
 
 class StockAnalysisApp extends StatelessWidget {
-  const StockAnalysisApp({super.key});
+  const StockAnalysisApp({super.key, this.notesApiService});
+
+  /// 測試環境注入 fake service 用；正式環境傳 null 走預設值
+  final NotesApiService? notesApiService;
 
   @override
   Widget build(BuildContext context) {
-    // MultiProvider 把無狀態 service 注入整顆 widget tree，
-    // 各頁面的 ViewModel 透過 context.read<T>() 取得依賴並建構自己。
-    //
-    // 為什麼 service 用一般 Provider 而非 ChangeNotifierProvider：
-    // MarkdownLoader / MarkdownSectionParser 是 stateless utility，不會 notify
-    // listener；用對的 Provider 類型也能向下游讀者表達「這東西不會變」的語意。
-    //
-    // 為什麼 parser 與 loader 並列（不是 ProxyProvider）：
-    // 目前 parser 不依賴 loader（parse(String) 是純函式），未來如果要在 parser
-    // 內部引用 loader，再改成 ProxyProvider 串起依賴。
     return MultiProvider(
       providers: [
-        Provider<MarkdownLoader>(create: (_) => MarkdownLoader()),
-        Provider<MarkdownSectionParser>(create: (_) => MarkdownSectionParser()),
+        Provider<NotesApiService>(
+          create: (_) => notesApiService ?? NotesApiService(),
+        ),
       ],
       child: MaterialApp.router(
         title: '分析師筆記',

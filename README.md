@@ -57,8 +57,9 @@ GitHub Actions 自動部署（`.github/workflows/deploy.yml`）：每次 push �
 | **Framework** | Flutter 3.41 (Web) | Single codebase 跨 web / iOS / macOS；對 iOS 工程師而言概念對應最直觀 |
 | **語言** | Dart 3.11 | Sound null safety、record、pattern matching 都到位 |
 | **路由** | [`go_router`](https://pub.dev/packages/go_router) | 聲明式路由，類似 SwiftUI `NavigationStack` 的 mental model |
-| **Markdown 渲染** | [`flutter_markdown`](https://pub.dev/packages/flutter_markdown) | 直接吃 .md 字串輸出 widget tree，支援表格、連結、程式碼區塊 |
+| **Markdown 渲染** | [`flutter_markdown`](https://pub.dev/packages/flutter_markdown) | 直接吃 .md 字串輸出 widget tree（表格 / 連結 / code block）；Phase 2.5 後僅 markdown block 使用，table 改自製 widget |
 | **State management** | [`provider`](https://pub.dev/packages/provider) | 跟 SwiftUI `@ObservedObject` 同個概念，學習曲線最平緩 |
+| **HTTP** | [`http`](https://pub.dev/packages/http) | Phase 2.5 起改從 `/api/notes.json` fetch 結構化資料，web + 將來手機 App 共用同一個 client |
 | **UI System** | Material 3 + `ColorScheme.fromSeed` | 自動深淺色、動態色彩 |
 
 ---
@@ -78,6 +79,7 @@ GitHub Actions 自動部署（`.github/workflows/deploy.yml`）：每次 push �
 | **0** | Flutter Web scaffold、4 份 markdown 渲染、首頁卡片 + 詳細頁 | ✅ Done |
 | **1** | HomePage 對照中心化版面重設計 + NotePage 日期 Tab + 共用 widgets | ✅ Done |
 | **2** | 引入 `provider` + ViewModel 層、把資料載入抽出 view、VM 單元測試 | ✅ Done |
+| **2.5** | Markdown → JSON build pipeline、結構化表格 widget（CompactTableView 解決手機 UX）、HTTP API 化（為將來手機 App 鋪底） | ✅ Done |
 | **3** | 全文搜尋（個股代號、關鍵字）、跨分析師個股索引 | Next |
 | **4** | 共識度 timeline、日期 calendar 視圖 | Planned |
 | **5** | GitHub Pages 部署、CI/CD（GitHub Actions） | ✅ Done |
@@ -86,23 +88,32 @@ GitHub Actions 自動部署（`.github/workflows/deploy.yml`）：每次 push �
 
 ## Architecture
 
-採 **MVVM** 分層，對應 SwiftUI 開發習慣：
+採 **MVVM** 分層，對應 SwiftUI 開發習慣。Phase 2.5 後資料流分成兩條：build-time markdown → JSON、runtime View → API → JSON。
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  main.dart   ─── MultiProvider 注入 stateless services       │
-│       ↓                                                       │
-│  View         (StatelessWidget + 頁面層 ChangeNotifierProvider)│
-│       ↓ Consumer 訂閱 state (idle/loading/success/error)      │
-│  ViewModel   (HomeViewModel / NoteViewModel : ChangeNotifier) │
-│       ↓ context.read<Service>() 取得依賴                       │
-│  Service     (MarkdownLoader / MarkdownSectionParser)         │
-│       ↓ 讀取                                                   │
-│  Asset bundle (markdown 檔案)                                 │
-└──────────────────────────────────────────────────────────────┘
+[ build time ─────────────────────────────────────────────────── ]
+  assets/notes/*.md (source of truth)
+       ↓ tool/build_notes_json.dart  (sync_notes.sh + CI 都會跑)
+  web/api/notes.json (結構化 artifact，commit 進 git)
+
+[ runtime ────────────────────────────────────────────────────── ]
+  main.dart    ─── MultiProvider 注入 NotesApiService
+       ↓
+  View         (StatelessWidget + 頁面層 ChangeNotifierProvider)
+       ↓ Consumer 訂閱 state (idle/loading/success/error)
+  ViewModel    (HomeViewModel / NoteViewModel : ChangeNotifier)
+       ↓ context.read<NotesApiService>().load()
+  Service      (NotesApiService：http.get + utf8 decode + Future cache)
+       ↓ HTTP GET
+  /api/notes.json   ← web 同 origin / 手機 App 注入 absolute URL
 ```
 
-ViewModel 用四態 enum (`idle / loading / success / error`) 取代 `FutureBuilder` 的隱式 snapshot 狀態，並用建構式注入 services，讓 VM 可獨立進行單元測試（不需要 widget tree）。
+幾個架構亮點：
+
+- **ViewModel 用四態 enum**（`idle / loading / success / error`）取代 `FutureBuilder` 的隱式 snapshot 狀態，View 端 `switch` 強制窮舉
+- **建構式注入 services**：VM 可獨立進行單元測試（不依賴 widget tree、整批 < 1 秒跑完）
+- **Block-level 渲染**：`NoteBlock` 是 `sealed class`，`markdown` 走 `flutter_markdown`、`table` 走自製 `CompactTableView`（固定欄寬 + cell tap 跳整列 dialog，解決手機 markdown table 水平捲動的 UX 痛點）
+- **共用 source for web + mobile**：runtime 只剩 fetch + decode，將來手機 App 共用同一個 JSON endpoint
 
 對應 Swift / SwiftUI 慣例：
 
@@ -122,26 +133,37 @@ ViewModel 用四態 enum (`idle / loading / success / error`) 取代 `FutureBuil
 stockAnalysis/
 ├── lib/
 │   ├── main.dart                          # App 入口 + MultiProvider + GoRouter
-│   ├── models/
-│   │   └── note_source.dart               # 4 個來源的 metadata
+│   ├── models/                            # Phase 2.5 schema models
+│   │   ├── analyst.dart                   # 分析師 metadata（key/name/desc/thumbnail）
+│   │   ├── note_block.dart                # sealed class：MarkdownBlock / TableBlock
+│   │   ├── note_entry.dart                # 一個日期 entry（date/note/blocks/analystKey）
+│   │   └── notes_index.dart               # 整份 notes.json 對映
 │   ├── services/                          # Stateless utility（透過 Provider 注入）
-│   │   ├── markdown_loader.dart           # rootBundle.loadString 包裝
-│   │   └── markdown_section_parser.dart   # 按 ## YYYY-MM-DD 拆段
+│   │   └── notes_api_service.dart         # http.get + utf8 decode + Future cache
 │   ├── viewmodels/                        # ChangeNotifier 四態 state machine
-│   │   ├── home_view_model.dart           # 載入對照檔
-│   │   └── note_view_model.dart           # 載入個別分析師檔 + 保留 rawMarkdown
+│   │   ├── home_view_model.dart           # 對照 entries + 分析師清單
+│   │   └── note_view_model.dart           # 按 analystKey 過濾 entries
 │   ├── views/
 │   │   ├── home_page.dart                 # 對照中心化首頁
 │   │   ├── note_page.dart                 # 個別分析師頁
-│   │   └── widgets/                       # 共用 UI 元件
+│   │   └── widgets/
+│   │       ├── block_renderer.dart        # 按 block type 分派渲染 + BlockListView
+│   │       ├── compact_table_view.dart    # 固定欄寬 + tap cell 跳整列 dialog
+│   │       └── date_tab_bar.dart          # 共用日期 TabBar
 │   └── theme/
-├── assets/notes/                          # 4 份 .md 筆記（由 sync_notes.sh 同步進來）
+├── tool/
+│   └── build_notes_json.dart              # markdown → notes.json build script
+├── assets/notes/                          # 4 份 .md 筆記（sync_notes.sh 同步進來，build script 的 source of truth）
+├── web/
+│   └── api/notes.json                     # build script 產出（commit 進 git；deploy 後成為 /api/notes.json endpoint）
 ├── test/
-│   ├── widget_test.dart                   # App smoke test
-│   └── viewmodels/                        # VM 單元測試（11 個 case）
-│       ├── home_view_model_test.dart
-│       └── note_view_model_test.dart
-├── sync_notes.sh                          # 從 ~/Documents/AI_G/分析師筆記/ 同步
+│   ├── widget_test.dart                   # App smoke test（注入 fake API）
+│   ├── services/
+│   │   └── notes_api_service_test.dart    # NotesApiService 6 個 case
+│   └── viewmodels/                        # VM 單元測試
+│       ├── home_view_model_test.dart      # 5 個 case
+│       └── note_view_model_test.dart      # 6 個 case
+├── sync_notes.sh                          # 從 ~/Documents/AI_G/分析師筆記/ 同步 + 重產 JSON
 └── pubspec.yaml
 ```
 
@@ -168,11 +190,17 @@ flutter run -d chrome
 ### Run tests
 
 ```bash
-flutter test                   # 跑全部測試
-flutter test test/viewmodels/  # 只跑 ViewModel 單元測試
+flutter test                   # 跑全部測試（18 個 case）
+flutter test test/viewmodels/  # 只跑 ViewModel 測試（11 個）
+flutter test test/services/    # 只跑 NotesApiService 測試（6 個）
 ```
 
-目前共 11 個 ViewModel 單元測試（四態轉換、retry 清錯誤、防重入、source 路由），加 1 個 App smoke test。VM 測試不依賴 widget tree，整批跑完 < 1 秒。
+涵蓋範圍：
+- **HomeViewModel / NoteViewModel**（11 個）：四態轉換、retry 清錯誤、防重入、`analystKey` 過濾、找不到分析師時的 graceful fallback
+- **NotesApiService**（6 個）：HTTP 成功 / 失敗、Future 快取、失敗後清快取讓 retry 真的重打、utf-8 中文解碼、`baseUrl + notesPath` 組合 URL
+- **App smoke test**（1 個）：用注入 fake API 確認 widget tree 起得來
+
+VM 與 service 測試不依賴 widget tree，整批跑完 < 1 秒。
 
 ### 同步最新筆記
 
@@ -182,17 +210,27 @@ flutter test test/viewmodels/  # 只跑 ViewModel 單元測試
 ./sync_notes.sh
 ```
 
-腳本會把 4 個 .md 檔複製到 `assets/notes/`，rebuild 後即生效。
+腳本會：
+1. 把 4 個 `.md` 檔複製到 `assets/notes/`
+2. 跑 `dart run tool/build_notes_json.dart` 重新產 `web/api/notes.json`（Phase 2.5 起 view 從 JSON 讀資料，不再從 markdown）
+
+CI 部署時也會自動再產一次當保險（避免本地忘記重產 JSON）。
 
 ---
 
 ## Development Notes
 
-### 為什麼 markdown 直接放 assets 而不是 fetch 遠端？
+### 為什麼是「build-time markdown → JSON」而非 BaaS / 自寫 backend？
 
-- Flutter Web 沒有 `dart:io File` API，跨平台統一走 `AssetBundle`
-- 筆記內容更新頻率不高（每日 4~6 筆），build-time bundle 最簡單
-- 未來如果切成「fetch 遠端 markdown」，只要換掉 `MarkdownLoader.load` 實作，view / model 都不用動（Repository pattern 的價值）
+Phase 2.5 把資料層從「runtime parse markdown」改成「build-time 產 JSON、runtime 只 fetch」，但仍維持純靜態部署。考慮過的替代方案：
+
+| 方案 | 為何沒選 |
+|---|---|
+| BaaS（Supabase / Firebase） | Vendor lock-in、要 schema migration、月費、增加複雜度但個人筆記應用沒收益 |
+| 自寫 backend（Node / Go + Postgres） | 維運成本高、cold start、CORS、auth；對單人筆記應用過度工程 |
+| **build-time JSON（採用）** | 仍純靜態（零月費）、git history 可追蹤 JSON 變化、web + 將來手機 App 共用同一個 endpoint |
+
+結構化好處：表格資料變成 `{headers, rows}` 陣列後，前端可以自由用 native widget 渲染（解決 markdown table 在手機水平捲動的 UX 痛點），全文搜尋（Phase 3）也能直接 grep 結構化欄位。
 
 ### 為什麼用 `flutter_markdown`（已被官方標記 deprecated）？
 
@@ -217,9 +255,9 @@ flutter test test/viewmodels/  # 只跑 ViewModel 單元測試
 ## Known Limitations
 
 - `flutter_markdown` 套件官方已 deprecated（但仍可用）— 見 Development Notes
-- 整檔 markdown 一次渲染，大檔案（30KB+）首次載入有感
+- 每個日期 entry 的 blocks 一次性渲染，長文章首次切 Tab 時稍卡（將來可用 lazy block 改善）
 - 中文檔名在 GitHub web UI 顯示為 URL-encoded 字串（不影響功能）
-- 沒有任何後端，筆記是 build-time bundle，更新需要重新 build
+- 靜態 API：`/api/notes.json` 是 build artifact，沒 server-side 邏輯；更新內容需要 push markdown → CI 重新 build + deploy
 
 ---
 

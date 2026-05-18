@@ -3,10 +3,12 @@
 # 每次 push 到 main 自動觸發：build → 上傳 → 部署。
 # 部署完成的 URL：https://gary8107.github.io/stockAnalysis/
 #
-# 兩個關鍵設計：
+# 三個關鍵設計：
 # 1. --base-href "/stockAnalysis/"：因為部署在子路徑而非 root，asset 路徑要對齊
 # 2. 把 index.html 複製成 404.html：GitHub Pages 沒 server-side rewrite，
-#    使用者直接打 /note/0 預設會 404；fallback 到 index 讓 go_router 接管
+#    使用者直接打 /note/ruan-huici 預設會 404；fallback 到 index 讓 go_router 接管
+# 3. build 前先跑 tool/build_notes_json.dart 重產 /api/notes.json：
+#    Phase 2.5 後 JSON 是從 markdown 衍生的 artifact，CI 重產一次當保險
 
 name: Deploy to GitHub Pages
 
@@ -44,6 +46,13 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Generate notes.json from markdown
+        # Phase 2.5：web/api/notes.json 是從 assets/notes/*.md 衍生的 artifact。
+        # 雖然 JSON 已 commit 進 git，CI 重新產一次當保險——萬一 .md 改了但
+        # 忘記跑 `dart run tool/build_notes_json.dart` 同步 JSON，CI 會補上。
+        # 部署的永遠是「跟當前 markdown 一致」的 JSON
+        run: dart run tool/build_notes_json.dart
 
       - name: Build web
         # base-href 必須跟 GitHub Pages 子路徑（repo 名稱）一致
