@@ -61,6 +61,14 @@
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(function (registration) {
+        // 主動觸發 SW 更新檢查
+        // Flutter 預設的 flutter_service_worker.js 採用「lazy update」策略，
+        // 瀏覽器預設 24 小時才會自動檢查一次 SW 是否有新版本，
+        // 導致 updatefound 事件常常不會被觸發、下面 reload 邏輯形同虛設。
+        // 在這裡呼叫 update() 強制每次頁面載入都去比對遠端 flutter_service_worker.js，
+        // 有變更就會立即觸發 updatefound、走下方的自動 reload 流程。
+        registration.update();
+
         registration.addEventListener('updatefound', function () {
           var newWorker = registration.installing;
           if (!newWorker) return;
