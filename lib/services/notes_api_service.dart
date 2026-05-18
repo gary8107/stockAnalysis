@@ -26,16 +26,27 @@ class NotesApiService {
   NotesApiService({
     http.Client? httpClient,
     this.baseUrl = '',
-    this.notesPath = '/api/notes.json',
+    this.notesPath = 'api/notes.json',
   }) : _httpClient = httpClient ?? http.Client();
 
   final http.Client _httpClient;
 
-  /// 預設空字串走相對路徑（web 同 origin）；手機 App 注入 absolute URL，
-  /// 例如 'https://gary8107.github.io/stockAnalysis'
+  /// 預設空字串走相對路徑；手機 App 注入 absolute URL，例如
+  /// 'https://gary8107.github.io/stockAnalysis/'（含尾斜線）
   final String baseUrl;
 
-  /// API 路徑——抽出來讓未來改 endpoint 不用動 caller
+  /// API 路徑——抽出來讓未來改 endpoint 不用動 caller。
+  ///
+  /// 為什麼預設不帶前置 `/`（不是 `/api/notes.json` 而是 `api/notes.json`）：
+  /// GitHub Pages 部署在 `/stockAnalysis/` 子路徑，index.html 有
+  /// `<base href="/stockAnalysis/">`。瀏覽器處理 fetch URL 的規則：
+  /// - 帶 `/` 開頭 → absolute path，相對於 origin root（忽略 base-href）
+  ///   → 變成 `https://gary8107.github.io/api/notes.json` → 404
+  /// - 不帶 `/` 開頭 → relative，相對於 base-href
+  ///   → 變成 `https://gary8107.github.io/stockAnalysis/api/notes.json` → ✓
+  ///
+  /// 本地 dev `flutter run -d chrome` 走 `http://localhost:xxxx/`，base-href
+  /// 是 `/`，兩種寫法都 work——所以這個 bug 只在部署到子路徑時才浮現。
   final String notesPath;
 
   Future<NotesIndex>? _cached;
