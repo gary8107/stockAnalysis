@@ -41,6 +41,7 @@ dependencies:
   go_router: ^14.6.2
   # State management：跟 SwiftUI @ObservedObject 同個概念
   provider: ^6.1.2
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
