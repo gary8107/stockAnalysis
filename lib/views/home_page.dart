@@ -1,47 +1,42 @@
 // home_page.dart
 //
-// 首頁：以「對照資料」為核心 — Banner + 分析師 Tab + 日期 Tab + 對照內容。
-// 點分析師卡片跳到該分析師完整檔；切日期 Tab 顯示對照檔內該日期區段。
+// 首頁：以「對照資料」為核心 — Banner + 分析師 Row + 日期 Tab + 對照內容。
+// 點分析師卡片跳到該分析師完整檔；切日期 Tab 顯示對照檔內該日期 entry。
 //
 // 設計取捨：
-// - 對照檔載一次、parse 出所有日期區段，切日期不重新載檔（純切 view）
+// - 對照資料一次 fetch 後 parse 完成，切日期不重新載（純切 view）
 // - 分析師 Row 在桌機水平排、手機水平捲動（LayoutBuilder breakpoint 600dp）
 // - TabBar isScrollable 處理未來日期增加的情境
-// - State management：Phase 2 起改用 HomeViewModel (ChangeNotifier) + DefaultTabController
-//   View 只訂閱 VM 狀態（idle/loading/success/error）並渲染，載入邏輯都在 VM
+// - State management：HomeViewModel (ChangeNotifier) + DefaultTabController
+//   View 訂閱 VM 狀態（idle/loading/success/error）並渲染，載入邏輯都在 VM
+// - 表格不再水平捲動：每個 entry 的 blocks 用 BlockListView 渲染，table block
+//   走 CompactTableView（固定欄寬 + tap cell 跳 dialog，解決手機 UX 痛點）
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../models/note_source.dart';
-import '../services/markdown_loader.dart';
-import '../services/markdown_section_parser.dart';
+import '../models/analyst.dart';
+import '../models/note_entry.dart';
+import '../services/notes_api_service.dart';
 import '../viewmodels/home_view_model.dart';
+import 'widgets/block_renderer.dart';
 import 'widgets/date_tab_bar.dart';
-import 'widgets/section_view.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // VM 在頁面層建立，頁面 dispose 自動清掉，不需要全域單例。
-    //
-    // 為什麼 create 內可以直接 ..load()：
-    // load() 第一次的 notifyListeners 發生在 await 之前、Consumer 還沒訂閱時，
-    // 不會觸發「build 中 setState」的錯誤；Consumer 之後訂閱時讀到的就是
-    // loading 狀態，UI 自然顯示 loading indicator。
     return Scaffold(
       body: ChangeNotifierProvider<HomeViewModel>(
         create: (context) => HomeViewModel(
-          loader: context.read<MarkdownLoader>(),
-          parser: context.read<MarkdownSectionParser>(),
+          api: context.read<NotesApiService>(),
         )..load(),
         child: Consumer<HomeViewModel>(
           builder: (context, viewModel, _) {
             switch (viewModel.state) {
-              // idle 理論上只會在 VM 剛建立、load() 還沒被呼叫的極短時間出現；
+              // idle 只會在 VM 剛建立、load() 還沒被呼叫的極短時間出現；
               // 跟 loading 合併呈現轉圈圈，避免首幀閃過空白
               case HomeLoadState.idle:
               case HomeLoadState.loading:
@@ -52,11 +47,14 @@ class HomePage extends StatelessWidget {
                   child: Text('載入對照資料失敗：${viewModel.error}'),
                 );
               case HomeLoadState.success:
-                final sections = viewModel.sections;
-                if (sections.isEmpty) {
+                final comparisons = viewModel.comparisons;
+                if (comparisons.isEmpty) {
                   return const Center(child: Text('沒有對照資料'));
                 }
-                return _HomeBody(sections: sections);
+                return _HomeBody(
+                  entries: comparisons,
+                  analysts: viewModel.analysts,
+                );
             }
           },
         ),
@@ -66,24 +64,26 @@ class HomePage extends StatelessWidget {
 }
 
 class _HomeBody extends StatelessWidget {
-  const _HomeBody({required this.sections});
-  final List<MarkdownSection> sections;
+  const _HomeBody({required this.entries, required this.analysts});
+
+  final List<NoteEntry> entries;
+  final List<Analyst> analysts;
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: sections.length,
+      length: entries.length,
       child: SafeArea(
         child: Column(
           children: [
             const _Banner(),
-            const _AnalystRow(),
-            DateTabBar(sections: sections),
+            _AnalystRow(analysts: analysts),
+            DateTabBar(entries: entries),
             const Divider(height: 1),
             Expanded(
               child: TabBarView(
-                children: sections
-                    .map((s) => SectionView(section: s))
+                children: entries
+                    .map((entry) => BlockListView(blocks: entry.blocks))
                     .toList(),
               ),
             ),
@@ -134,19 +134,20 @@ class _Banner extends StatelessWidget {
 }
 
 class _AnalystRow extends StatelessWidget {
-  const _AnalystRow();
+  const _AnalystRow({required this.analysts});
+
+  final List<Analyst> analysts;
 
   // breakpoint：600dp 是 Material Design 通用「手機 / 平板」分界
   static const _wideBreakpoint = 600.0;
 
   @override
   Widget build(BuildContext context) {
-    final analysts = NoteSource.analysts;
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= _wideBreakpoint;
         if (isWide) {
-          // 桌機 / 平板：3 卡水平 Expanded 等寬
+          // 桌機 / 平板：水平 Expanded 等寬
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -156,7 +157,7 @@ class _AnalystRow extends StatelessWidget {
                   Expanded(
                     child: _AnalystMiniCard(
                       analyst: analysts[i],
-                      onTap: () => context.go('/note/$i'),
+                      onTap: () => context.go('/note/${analysts[i].key}'),
                     ),
                   ),
                 ],
@@ -176,7 +177,7 @@ class _AnalystRow extends StatelessWidget {
               width: 260,
               child: _AnalystMiniCard(
                 analyst: analysts[i],
-                onTap: () => context.go('/note/$i'),
+                onTap: () => context.go('/note/${analysts[i].key}'),
               ),
             ),
           ),
@@ -188,7 +189,8 @@ class _AnalystRow extends StatelessWidget {
 
 class _AnalystMiniCard extends StatelessWidget {
   const _AnalystMiniCard({required this.analyst, required this.onTap});
-  final NoteSource analyst;
+
+  final Analyst analyst;
   final VoidCallback onTap;
 
   @override
@@ -204,7 +206,7 @@ class _AnalystMiniCard extends StatelessWidget {
               width: 96,
               height: 80,
               child: Image.asset(
-                analyst.thumbnailAsset,
+                analyst.thumbnail,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => ColoredBox(
                   color: Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -249,5 +251,3 @@ class _AnalystMiniCard extends StatelessWidget {
     );
   }
 }
-
-// _DateTabBar 和 _SectionView 已抽出至 lib/views/widgets/ 共用

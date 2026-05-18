@@ -1,122 +1,148 @@
 // note_view_model_test.dart
 //
-// NoteViewModel 單元測試。
-// 結構對齊 HomeViewModel 測試，多測 rawMarkdown 與 source.assetPath 路由。
-//
-// 用真實 NoteSource.analysts.first 而不是另建 fake source：
-// NoteSource 是 value object 沒副作用，用真的更貼近實際使用情境，
-// 也順便驗證 const 來源清單不會壞。
+// NoteViewModel 單元測試（Phase 2.5：依賴 NotesApiService 後的版本）。
+// 結構對齊 HomeViewModel 測試；多測 analystKey 過濾與「key 找不到」的 case。
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stock_analysis/models/note_source.dart';
-import 'package:stock_analysis/services/markdown_loader.dart';
-import 'package:stock_analysis/services/markdown_section_parser.dart';
+import 'package:stock_analysis/models/analyst.dart';
+import 'package:stock_analysis/models/note_block.dart';
+import 'package:stock_analysis/models/note_entry.dart';
+import 'package:stock_analysis/models/notes_index.dart';
+import 'package:stock_analysis/services/notes_api_service.dart';
 import 'package:stock_analysis/viewmodels/note_view_model.dart';
 
-// 假 loader：跟 home_view_model_test 相同 pattern。
-// 各檔自己持一份是為了讓測試檔自包含、好讀；若未來再多兩三個 VM 都需要
-// 同款 fake，再考慮抽 test/helpers/fake_loader.dart 共用
-class _FakeLoader extends MarkdownLoader {
-  String markdown = '';
+class _FakeNotesApi extends NotesApiService {
+  _FakeNotesApi();
+
+  NotesIndex? response;
   Object? error;
   int loadCalls = 0;
-  final List<String> loadedPaths = [];
 
   @override
-  Future<String> load(String assetPath) async {
+  Future<NotesIndex> load() async {
     loadCalls++;
-    loadedPaths.add(assetPath);
     if (error != null) throw error!;
-    return markdown;
+    if (response != null) return response!;
+    throw StateError('Fake API: no response or error configured');
   }
 }
 
-const _sampleMarkdown = '''
-## 2026-05-15（影片日期）
+const _ruan = Analyst(
+  key: 'ruan-huici',
+  name: '阮蕙慈',
+  description: '大華國際投顧',
+  thumbnail: 'assets/thumbnails/ruan-huici.jpg',
+);
 
-第一天
+const _li = Analyst(
+  key: 'li-shufang',
+  name: '李蜀芳',
+  description: '永誠國際投顧',
+  thumbnail: 'assets/thumbnails/li-shufang.jpg',
+);
 
-## 2026-05-14（影片日期）
+final _ruanEntry1 = NoteEntry(
+  date: '2026-05-15',
+  note: '影片日期',
+  blocks: const [MarkdownBlock(content: '阮的內容')],
+  analystKey: 'ruan-huici',
+);
 
-第二天
-''';
+final _ruanEntry2 = NoteEntry(
+  date: '2026-05-14',
+  note: '影片日期',
+  blocks: const [MarkdownBlock(content: '阮的另一天')],
+  analystKey: 'ruan-huici',
+);
 
-final _testSource = NoteSource.analysts.first;
+final _liEntry = NoteEntry(
+  date: '2026-05-15',
+  note: null,
+  blocks: const [MarkdownBlock(content: '李的內容')],
+  analystKey: 'li-shufang',
+);
+
+NotesIndex _buildIndex({
+  List<Analyst> analysts = const [_ruan, _li],
+  List<NoteEntry> notes = const [],
+}) {
+  return NotesIndex(
+    version: '1.0',
+    generatedAt: DateTime.utc(2026, 5, 18),
+    analysts: analysts,
+    comparisons: const [],
+    notes: notes,
+  );
+}
 
 void main() {
   group('NoteViewModel', () {
-    test('初始狀態：idle、rawMarkdown 空、sections 空、error null、source 等於建構參數', () {
+    test('初始狀態：idle、analyst null、entries 空、error null、analystKey 等於建構參數',
+        () {
       final viewModel = NoteViewModel(
-        loader: _FakeLoader(),
-        parser: MarkdownSectionParser(),
-        source: _testSource,
+        api: _FakeNotesApi(),
+        analystKey: 'ruan-huici',
       );
 
       expect(viewModel.state, NoteLoadState.idle);
-      expect(viewModel.rawMarkdown, '');
-      expect(viewModel.sections, isEmpty);
+      expect(viewModel.analyst, isNull);
+      expect(viewModel.entries, isEmpty);
       expect(viewModel.error, isNull);
-      expect(viewModel.source, same(_testSource));
+      expect(viewModel.analystKey, 'ruan-huici');
     });
 
-    test('load 成功：rawMarkdown 與 sections 一起填入', () async {
-      final stateLog = <NoteLoadState>[];
-      final viewModel = NoteViewModel(
-        loader: _FakeLoader()..markdown = _sampleMarkdown,
-        parser: MarkdownSectionParser(),
-        source: _testSource,
-      );
-      viewModel.addListener(() => stateLog.add(viewModel.state));
+    test('load 成功：analyst metadata 與 entries 一起填入；entries 只含該 key 的資料',
+        () async {
+      final api = _FakeNotesApi()
+        ..response = _buildIndex(notes: [_ruanEntry1, _ruanEntry2, _liEntry]);
+      final viewModel = NoteViewModel(api: api, analystKey: 'ruan-huici');
 
       await viewModel.load();
 
-      expect(stateLog, [NoteLoadState.loading, NoteLoadState.success]);
-      expect(viewModel.rawMarkdown, _sampleMarkdown);
-      expect(viewModel.sections, hasLength(2));
-      expect(viewModel.sections.first.date, '2026-05-15');
-      expect(viewModel.error, isNull);
+      expect(viewModel.state, NoteLoadState.success);
+      expect(viewModel.analyst, _ruan);
+      // 過濾正確：只回 ruan-huici 的兩筆，不含 li-shufang 那筆
+      expect(viewModel.entries, hasLength(2));
+      expect(
+        viewModel.entries.map((entry) => entry.date),
+        ['2026-05-15', '2026-05-14'],
+      );
     });
 
-    test('load 用 source.assetPath 載入，不是別的路徑', () async {
-      final loader = _FakeLoader()..markdown = _sampleMarkdown;
-      final viewModel = NoteViewModel(
-        loader: loader,
-        parser: MarkdownSectionParser(),
-        source: _testSource,
-      );
+    test('load 成功但 analystKey 找不到對映：analyst 為 null、entries 空（但 state 仍是 success）',
+        () async {
+      final api = _FakeNotesApi()..response = _buildIndex(notes: [_ruanEntry1]);
+      final viewModel = NoteViewModel(api: api, analystKey: 'unknown-key');
 
       await viewModel.load();
 
-      expect(loader.loadedPaths, [_testSource.assetPath]);
+      expect(viewModel.state, NoteLoadState.success);
+      expect(viewModel.analyst, isNull);
+      expect(viewModel.entries, isEmpty);
     });
 
-    test('load 失敗：state 變 error，rawMarkdown 維持空字串', () async {
+    test('load 失敗：state 變 error、analyst / entries 不被污染', () async {
       final viewModel = NoteViewModel(
-        loader: _FakeLoader()..error = 'boom',
-        parser: MarkdownSectionParser(),
-        source: _testSource,
+        api: _FakeNotesApi()..error = 'boom',
+        analystKey: 'ruan-huici',
       );
 
       await viewModel.load();
 
       expect(viewModel.state, NoteLoadState.error);
       expect(viewModel.error, 'boom');
-      // rawMarkdown 不該被覆寫成壞資料
-      expect(viewModel.rawMarkdown, '');
+      expect(viewModel.analyst, isNull);
+      expect(viewModel.entries, isEmpty);
     });
 
     test('retry：新一輪 load 進入 loading 當下就清掉舊 error', () async {
-      final loader = _FakeLoader()..error = 'boom';
-      final viewModel = NoteViewModel(
-        loader: loader,
-        parser: MarkdownSectionParser(),
-        source: _testSource,
-      );
+      final api = _FakeNotesApi()..error = 'boom';
+      final viewModel = NoteViewModel(api: api, analystKey: 'ruan-huici');
       await viewModel.load();
       expect(viewModel.error, 'boom');
 
-      loader.error = null;
-      loader.markdown = _sampleMarkdown;
+      api.error = null;
+      api.response = _buildIndex(notes: [_ruanEntry1]);
 
       Object? errorAtLoadingMoment;
       var loadingObserved = false;
@@ -135,19 +161,15 @@ void main() {
       expect(viewModel.error, isNull);
     });
 
-    test('防重入：loading 中重複呼叫 load，loader 只被呼叫一次', () async {
-      final loader = _FakeLoader()..markdown = _sampleMarkdown;
-      final viewModel = NoteViewModel(
-        loader: loader,
-        parser: MarkdownSectionParser(),
-        source: _testSource,
-      );
+    test('防重入：loading 中重複呼叫 load，api 只被呼叫一次', () async {
+      final api = _FakeNotesApi()..response = _buildIndex();
+      final viewModel = NoteViewModel(api: api, analystKey: 'ruan-huici');
 
       final firstLoad = viewModel.load();
       final secondLoad = viewModel.load();
       await Future.wait([firstLoad, secondLoad]);
 
-      expect(loader.loadCalls, 1);
+      expect(api.loadCalls, 1);
       expect(viewModel.state, NoteLoadState.success);
     });
   });
