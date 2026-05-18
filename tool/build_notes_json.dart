@@ -4,8 +4,8 @@
 //
 // 設計取捨：
 // - Standalone dart script（dart:io），不能在 web 上跑——所以放 tool/ 而非 lib/
-// - 沿用既有 H2 日期 region 切割 regex（從 lib/services/markdown_section_parser.dart
-//   遷移過來；step 7 會刪掉 lib/ 那邊）
+// - H2 日期 region 切割 regex 從原 lib/services/markdown_section_parser.dart
+//   遷移過來（該檔已在 Phase 2.5 step 7 移除）
 // - 表格識別走簡單 line-based scanner：遇到 `|xxx|` + 下一行 `|---|` 就抓 table，
 //   不依賴 package:markdown 的完整 AST——降低 build 依賴、邊角情境可控
 // - 表格之外的內容全歸 MarkdownBlock（一坨字串），view 端用 flutter_markdown 渲染
@@ -23,8 +23,9 @@ import 'package:stock_analysis/models/note_block.dart';
 import 'package:stock_analysis/models/note_entry.dart';
 import 'package:stock_analysis/models/notes_index.dart';
 
-// 分析師清單——目前重複於 lib/models/note_source.dart，
-// step 7 會刪掉 NoteSource、讓這份成為 single source of truth
+// 分析師清單——這份是 Phase 2.5 後 analyst metadata 的 single source of
+// truth（原 lib/models/note_source.dart 在 step 7 移除）。新增分析師時
+// 同步更新 _analystFiles 對映即可
 const _analysts = <Analyst>[
   Analyst(
     key: 'ruan-huici',
