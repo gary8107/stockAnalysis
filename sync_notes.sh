@@ -20,3 +20,10 @@ cp "$SOURCE/分析師對照重點.md" "$DEST/"
 
 echo "✅ Synced 4 notes from 分析師筆記/ to assets/notes/"
 ls -la "$DEST"
+
+# Phase 2.5：跑 build script 把 markdown 轉成 web/api/notes.json
+# Flutter web 從 JSON 讀資料（不再從 markdown），sync 完必須同步重產
+# set -e 已經保證 dart run 失敗會中止整個 sync
+echo
+echo "🔨 Regenerating web/api/notes.json from markdown..."
+dart run tool/build_notes_json.dart
