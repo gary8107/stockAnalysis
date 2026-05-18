@@ -75,12 +75,12 @@ GitHub Actions 自動部署（`.github/workflows/deploy.yml`）：每次 push �
 
 | Phase | 範圍 | 狀態 |
 |---|---|---|
-| **0** | Flutter Web scaffold、4 份 markdown 渲染、首頁卡片 + 詳細頁 | Done |
-| **1** | 左側日期側欄 — 按 `## YYYY-MM-DD` 拆段、切日期不重新載檔 | Next |
-| **2** | 引入 `provider` + ViewModel 層、把資料載入抽出 view | Planned |
-| **3** | 全文搜尋（個股代號、關鍵字）、跨分析師個股索引 | Planned |
+| **0** | Flutter Web scaffold、4 份 markdown 渲染、首頁卡片 + 詳細頁 | ✅ Done |
+| **1** | HomePage 對照中心化版面重設計 + NotePage 日期 Tab + 共用 widgets | ✅ Done |
+| **2** | 引入 `provider` + ViewModel 層、把資料載入抽出 view、VM 單元測試 | ✅ Done |
+| **3** | 全文搜尋（個股代號、關鍵字）、跨分析師個股索引 | Next |
 | **4** | 共識度 timeline、日期 calendar 視圖 | Planned |
-| **5** | GitHub Pages 部署、CI/CD（GitHub Actions） | Planned |
+| **5** | GitHub Pages 部署、CI/CD（GitHub Actions） | ✅ Done |
 
 ---
 
@@ -89,16 +89,20 @@ GitHub Actions 自動部署（`.github/workflows/deploy.yml`）：每次 push �
 採 **MVVM** 分層，對應 SwiftUI 開發習慣：
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  View          (Page widgets)                       │
-│       ↓ 訂閱                                          │
-│  ViewModel    (ChangeNotifier，Phase 2+ 引入)         │
-│       ↓ 呼叫                                          │
-│  Service      (Repository pattern)                  │
-│       ↓ 讀取                                          │
-│  Asset bundle (markdown files)                      │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  main.dart   ─── MultiProvider 注入 stateless services       │
+│       ↓                                                       │
+│  View         (StatelessWidget + 頁面層 ChangeNotifierProvider)│
+│       ↓ Consumer 訂閱 state (idle/loading/success/error)      │
+│  ViewModel   (HomeViewModel / NoteViewModel : ChangeNotifier) │
+│       ↓ context.read<Service>() 取得依賴                       │
+│  Service     (MarkdownLoader / MarkdownSectionParser)         │
+│       ↓ 讀取                                                   │
+│  Asset bundle (markdown 檔案)                                 │
+└──────────────────────────────────────────────────────────────┘
 ```
+
+ViewModel 用四態 enum (`idle / loading / success / error`) 取代 `FutureBuilder` 的隱式 snapshot 狀態，並用建構式注入 services，讓 VM 可獨立進行單元測試（不需要 widget tree）。
 
 對應 Swift / SwiftUI 慣例：
 
@@ -117,21 +121,27 @@ GitHub Actions 自動部署（`.github/workflows/deploy.yml`）：每次 push �
 ```
 stockAnalysis/
 ├── lib/
-│   ├── main.dart                 # App 入口 + GoRouter 設定
+│   ├── main.dart                          # App 入口 + MultiProvider + GoRouter
 │   ├── models/
-│   │   └── note_source.dart      # 4 個來源的 metadata
-│   ├── services/
-│   │   └── markdown_loader.dart  # rootBundle.loadString 包裝
-│   ├── viewmodels/               # Phase 2+ 引入 state management
+│   │   └── note_source.dart               # 4 個來源的 metadata
+│   ├── services/                          # Stateless utility（透過 Provider 注入）
+│   │   ├── markdown_loader.dart           # rootBundle.loadString 包裝
+│   │   └── markdown_section_parser.dart   # 按 ## YYYY-MM-DD 拆段
+│   ├── viewmodels/                        # ChangeNotifier 四態 state machine
+│   │   ├── home_view_model.dart           # 載入對照檔
+│   │   └── note_view_model.dart           # 載入個別分析師檔 + 保留 rawMarkdown
 │   ├── views/
-│   │   ├── home_page.dart        # 來源卡片清單
-│   │   ├── note_page.dart        # markdown 渲染頁
-│   │   └── widgets/              # 共用 UI 元件
+│   │   ├── home_page.dart                 # 對照中心化首頁
+│   │   ├── note_page.dart                 # 個別分析師頁
+│   │   └── widgets/                       # 共用 UI 元件
 │   └── theme/
-├── assets/notes/                 # 4 份 .md 筆記（由 sync_notes.sh 同步進來）
+├── assets/notes/                          # 4 份 .md 筆記（由 sync_notes.sh 同步進來）
 ├── test/
-│   └── widget_test.dart          # smoke test
-├── sync_notes.sh                 # 從 ~/Documents/AI_G/分析師筆記/ 同步
+│   ├── widget_test.dart                   # App smoke test
+│   └── viewmodels/                        # VM 單元測試（11 個 case）
+│       ├── home_view_model_test.dart
+│       └── note_view_model_test.dart
+├── sync_notes.sh                          # 從 ~/Documents/AI_G/分析師筆記/ 同步
 └── pubspec.yaml
 ```
 
@@ -154,6 +164,15 @@ flutter run -d chrome
 ```
 
 第一次 build 約 30 秒~1 分鐘，之後 hot reload 即時。
+
+### Run tests
+
+```bash
+flutter test                   # 跑全部測試
+flutter test test/viewmodels/  # 只跑 ViewModel 單元測試
+```
+
+目前共 11 個 ViewModel 單元測試（四態轉換、retry 清錯誤、防重入、source 路由），加 1 個 App smoke test。VM 測試不依賴 widget tree，整批跑完 < 1 秒。
 
 ### 同步最新筆記
 
@@ -179,7 +198,7 @@ flutter run -d chrome
 
 - MVP 階段先用最直接的選擇
 - 整個專案只有 `NotePage` 一個地方在用，未來換成本很低
-- Phase 5 之後評估 `markdown_widget` 或 `flutter_markdown_plus`
+- 之後可評估 `markdown_widget` 或 `flutter_markdown_plus` 替換
 
 ### Commit message 風格
 
@@ -187,9 +206,11 @@ flutter run -d chrome
 
 - `feat:` 新功能
 - `fix:` bug 修正
-- `chore:` 工具鏈、設定
+- `refactor:` 重構（不影響行為）
+- `test:` 新增 / 修改測試
 - `docs:` 文件
-- `refactor:` 重構
+- `chore:` 工具鏈、設定
+- `ci:` CI/CD（GitHub Actions 等）
 
 ---
 
