@@ -22,6 +22,7 @@ import 'package:provider/provider.dart';
 
 import 'services/notes_api_service.dart';
 import 'views/mobile/app_shell.dart';
+import 'views/mobile/comparison_detail_page.dart';
 import 'views/shared/note_page.dart';
 
 void main() {
@@ -40,6 +41,15 @@ final _router = GoRouter(
       builder: (context, state) {
         final key = state.pathParameters['key'] ?? '';
         return NotePage(analystKey: key);
+      },
+    ),
+    GoRoute(
+      // 點對照首頁某個日期 ListTile 後 push 進這頁。
+      // path param 用 ISO 字串（例 /comparison/2026-05-22）讓 URL 可分享
+      path: '/comparison/:date',
+      builder: (context, state) {
+        final date = state.pathParameters['date'] ?? '';
+        return ComparisonDetailPage(date: date);
       },
     ),
   ],

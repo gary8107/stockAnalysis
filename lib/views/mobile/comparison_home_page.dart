@@ -10,6 +10,7 @@
 // - 不在這頁做日期 Tab 切換（與舊 HomePage 行為不同）：日期 List 是「導覽起點」而非「內容切換」
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/analyst.dart';
@@ -72,10 +73,9 @@ class _Body extends StatelessWidget {
         SliverToBoxAdapter(
           child: AnalystBannerCarousel(
             analysts: analysts,
-            onAnalystTap: (analyst) => _showPlaceholderSnack(
-              context,
-              '即將進入「${analyst.name}」個人頁（功能開發中）',
-            ),
+            // push 而非 go：保留底部 BottomNav 的 Tab state，返回鍵 pop 回對照頁
+            onAnalystTap: (analyst) =>
+                context.push('/note/${analyst.key}'),
           ),
         ),
         const SliverToBoxAdapter(
@@ -94,10 +94,8 @@ class _Body extends StatelessWidget {
             final entry = comparisons[index];
             return _DateListTile(
               entry: entry,
-              onTap: () => _showPlaceholderSnack(
-                context,
-                '即將進入 ${entry.date} 對照頁（功能開發中）',
-              ),
+              // push 而非 go：返回鍵 pop 回對照首頁，保留捲動位置與 BottomNav state
+              onTap: () => context.push('/comparison/${entry.date}'),
             );
           },
         ),
@@ -105,18 +103,6 @@ class _Body extends StatelessWidget {
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );
-  }
-
-  void _showPlaceholderSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
   }
 }
 
