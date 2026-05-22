@@ -7,7 +7,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../../models/note_entry.dart';
+import '../../../models/note_entry.dart';
 
 class DateTabBar extends StatelessWidget implements PreferredSizeWidget {
   const DateTabBar({super.key, required this.entries});

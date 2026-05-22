@@ -14,8 +14,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import '../../models/note_block.dart';
-import '../../theme/markdown_styles.dart';
+import '../../../models/note_block.dart';
+import '../../../theme/markdown_styles.dart';
 
 class CompactTableView extends StatelessWidget {
   const CompactTableView({super.key, required this.table});

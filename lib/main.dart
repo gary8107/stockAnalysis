@@ -1,11 +1,12 @@
 // main.dart
 //
-// App 入口點。
-// 架構備忘：
-// - 路由：用 go_router（聲明式，類似 SwiftUI NavigationStack）
-// - 主題：Material 3 + ColorScheme.fromSeed；深淺色跟系統
-// - DI：Phase 2.5 起用 NotesApiService 取代 Phase 2 的 MarkdownLoader/Parser；
-//   service 用一般 Provider（無狀態），ViewModel 用 ChangeNotifierProvider
+// **Web entry**（桌機 / 平板尺寸用）。CI 部署到 GitHub Pages 跑 `flutter build web`
+// 預設就走這個 entry。手機 App 改用 lib/main_mobile.dart（BottomNav 重新設計版面）。
+//
+// 兩 entry 差異：
+// - Web (main.dart)：路由 / → HomePage（一頁式 Banner + 分析師 Row + 日期 TabBar）
+// - Mobile (main_mobile.dart)：路由 / → AppShell（BottomNav 3 Tab）
+// 共用層：models / services / viewmodels / theme / 多數 widgets / NotePage
 //
 // 為什麼 StockAnalysisApp 接 optional notesApiService：
 // 讓 widget test 能注入 fake service，否則 test 環境下 http.get 拉不到
@@ -17,8 +18,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'services/notes_api_service.dart';
-import 'views/home_page.dart';
-import 'views/note_page.dart';
+import 'views/web/home_page.dart';
+import 'views/shared/note_page.dart';
 
 void main() {
   runApp(const StockAnalysisApp());
