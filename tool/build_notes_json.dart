@@ -31,19 +31,19 @@ const _analysts = <Analyst>[
     key: 'ruan-huici',
     name: '阮蕙慈',
     description: '大華國際投顧 · 金融阮實力',
-    thumbnail: 'assets/thumbnails/ruan-huici.jpg',
+    thumbnail: 'assets/thumbnails/rhc_0.jpg',
   ),
   Analyst(
     key: 'li-shufang',
     name: '李蜀芳',
     description: '永誠國際投顧 · 股市全芳位',
-    thumbnail: 'assets/thumbnails/li-shufang.jpg',
+    thumbnail: 'assets/thumbnails/lsf_0.jpg',
   ),
   Analyst(
     key: 'chen-kunjen',
     name: '陳昆仁(大仁哥)',
     description: '摩爾證券投顧 · 仁者無敵',
-    thumbnail: 'assets/thumbnails/chen-kunjen.jpg',
+    thumbnail: 'assets/thumbnails/ckj_0.jpg',
   ),
   Analyst(
     key: 'cai-zhenghua',
@@ -148,10 +148,12 @@ List<_Region> _splitH2DateRegions(String markdown) {
 
     // content 從 H2 標題行的下一行開始（不含 H2 本身——日期/副標已抽出）
     final firstNewline = markdown.indexOf('\n', match.start);
-    final contentStart =
-        firstNewline == -1 ? markdown.length : firstNewline + 1;
-    final end =
-        (i + 1 < matches.length) ? matches[i + 1].start : markdown.length;
+    final contentStart = firstNewline == -1
+        ? markdown.length
+        : firstNewline + 1;
+    final end = (i + 1 < matches.length)
+        ? matches[i + 1].start
+        : markdown.length;
     final content = markdown.substring(contentStart, end).trim();
 
     regions.add(_Region(date: date, note: note, content: content));
@@ -194,10 +196,7 @@ List<NoteBlock> _parseBlocks(String content) {
           .map((row) {
             if (row.length == headers.length) return row;
             if (row.length < headers.length) {
-              return [
-                ...row,
-                ...List.filled(headers.length - row.length, ''),
-              ];
+              return [...row, ...List.filled(headers.length - row.length, '')];
             }
             return row.sublist(0, headers.length);
           })
@@ -245,10 +244,7 @@ List<String> _splitCells(String line) {
   if (trimmed.endsWith('|')) {
     trimmed = trimmed.substring(0, trimmed.length - 1);
   }
-  return trimmed
-      .split('|')
-      .map((cell) => cell.trim())
-      .toList(growable: false);
+  return trimmed.split('|').map((cell) => cell.trim()).toList(growable: false);
 }
 
 // ---------- Helpers ----------
