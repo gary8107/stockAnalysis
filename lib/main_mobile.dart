@@ -69,7 +69,16 @@ class StockAnalysisMobileApp extends StatelessWidget {
           create: (_) =>
               notesApiService ??
               NotesApiService(
-                baseUrl: 'https://gary8107.github.io/stockAnalysis/',
+                // baseUrl 預設指向 prod GitHub Pages。本機開發要對接 dev server 時用：
+                //   flutter run -t lib/main_mobile.dart -d "iPhone 16e" \
+                //     --dart-define=API_BASE=http://localhost:5555/
+                // 為什麼用 String.fromEnvironment 而非從 env / arg 讀取：
+                //   --dart-define 是 build-time 字串替換，不需要 runtime 依賴；
+                //   未設定時自動 fallback 到 defaultValue，prod build 行為不變
+                baseUrl: const String.fromEnvironment(
+                  'API_BASE',
+                  defaultValue: 'https://gary8107.github.io/stockAnalysis/',
+                ),
               ),
         ),
       ],
