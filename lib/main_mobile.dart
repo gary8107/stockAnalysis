@@ -21,9 +21,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'services/notes_api_service.dart';
+import 'views/mobile/analyst_note_page.dart';
 import 'views/mobile/app_shell.dart';
 import 'views/mobile/comparison_detail_page.dart';
-import 'views/shared/note_page.dart';
 
 void main() {
   runApp(const StockAnalysisMobileApp());
@@ -35,12 +35,12 @@ final _router = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const AppShell()),
     GoRoute(
-      // 從 Banner 點某位分析師時可 push 到此路由；NotePage 既有 widget 在
-      // 手機尺寸下仍可用，未來可再針對 mobile 重新設計版面
+      // 從卡片 / Banner 點某位分析師時 push 到此路由。
+      // mobile 專屬版面：日期改用下拉選單（取代 web 共用 NotePage 的 TabBar）
       path: '/note/:key',
       builder: (context, state) {
         final key = state.pathParameters['key'] ?? '';
-        return NotePage(analystKey: key);
+        return AnalystNotePage(analystKey: key);
       },
     ),
     GoRoute(
