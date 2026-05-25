@@ -1,8 +1,8 @@
 // analyst_list_page.dart
 //
 // BottomNav「分析師」Tab 的首頁：垂直堆疊三張大卡，每張卡片用該分析師的縮圖當背景，
-// 卡片下方再放一段 2~3 句的介紹文字。第一版先不接點擊（純展示版面），等版型確定後
-// 再加 push 到 /note/:key 的導覽。
+// 卡片下方再放一段 2~3 句的介紹文字。點擊圖片卡 push 到 /note/:key（該分析師每日筆記頁），
+// 與對照 Tab 的 Banner 點擊行為一致（push 而非 go，保留 BottomNav Tab state）。
 //
 // 為什麼資料層沿用 HomeViewModel：
 // analysts 清單已經在 NotesIndex 內隨 comparisons 一起載入，重用同一個 VM 可以
@@ -16,6 +16,7 @@
 // + tool/build_notes_json.dart 同步輸出。
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/analyst.dart';
@@ -94,6 +95,8 @@ class _Body extends StatelessWidget {
         return _AnalystCardWithBio(
           analyst: analyst,
           bio: _analystBios[analyst.key] ?? analyst.description,
+          // push 而非 go：返回鍵 pop 回分析師列表、保留捲動位置與 BottomNav state
+          onTap: () => context.push('/note/${analyst.key}'),
         );
       },
     );
@@ -102,14 +105,19 @@ class _Body extends StatelessWidget {
 
 /// 一張「大卡 + 卡片下方介紹文字」的組合 unit。
 ///
-/// 為什麼把卡片和介紹文字綁在同一個 widget 而不在 _Body 用 Column inline：
-/// - 之後若要把整個 unit 包成 InkWell 接 push 導覽，只要動這個 widget 一個地方
-/// - 介紹文字會引用該分析師資料，邏輯應與卡片在同一層
+/// 點擊行為只綁在圖片卡（_AnalystImageCard 內的 InkWell）：圖片卡是 Material(elevation)，
+/// ripple 能漂亮地 clip 在圓角內；介紹文字維持純說明、不可點，避免整個 Column 外包 InkWell
+/// 時 ripple 被圖片卡自己的 Material 蓋住、只在文字區閃現的怪異視覺。
 class _AnalystCardWithBio extends StatelessWidget {
-  const _AnalystCardWithBio({required this.analyst, required this.bio});
+  const _AnalystCardWithBio({
+    required this.analyst,
+    required this.bio,
+    required this.onTap,
+  });
 
   final Analyst analyst;
   final String bio;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +125,7 @@ class _AnalystCardWithBio extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _AnalystImageCard(analyst: analyst),
+        _AnalystImageCard(analyst: analyst, onTap: onTap),
         const SizedBox(height: 12),
         // 介紹文字區塊：刻意不放在卡片內，讓圖片卡保持純圖像 + 姓名 overlay 的視覺份量，
         // 文字以 body 字級放在卡片下方，閱讀性比塞在漸層上更好
@@ -138,9 +146,10 @@ class _AnalystCardWithBio extends StatelessWidget {
 /// 與 AnalystBannerCarousel 內的卡片風格刻意一致（漸層方向、白字、圓角），
 /// 讓使用者在「對照 Tab Banner」與「分析師 Tab 卡片」之間有視覺連續性。
 class _AnalystImageCard extends StatelessWidget {
-  const _AnalystImageCard({required this.analyst});
+  const _AnalystImageCard({required this.analyst, required this.onTap});
 
   final Analyst analyst;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -186,30 +195,53 @@ class _AnalystImageCard extends StatelessWidget {
               left: 16,
               right: 16,
               bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+              // Row + 右側 chevron：給使用者「這張卡可以點進去」的視覺暗示（affordance），
+              // 姓名/節目用 Expanded 佔滿剩餘寬度、過長時 ellipsis，不會把 chevron 擠出畫面
+              child: Row(
                 children: [
-                  Text(
-                    analyst.name,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          analyst.name,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          analyst.description,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                  ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    analyst.description,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.chevron_right,
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ],
+              ),
+            ),
+            // InkWell 疊在最上層（Positioned.fill + 透明 Material）：讓點擊 ripple 顯示在
+            // 不透明縮圖「之上」。若把 InkWell 包在 Stack 底層，splash 會被 Image.asset
+            // 蓋住、看不到水波紋。透明 Material 不影響下方圖層的視覺。
+            Positioned.fill(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(onTap: onTap),
               ),
             ),
           ],
