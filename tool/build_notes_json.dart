@@ -45,6 +45,12 @@ const _analysts = <Analyst>[
     description: '摩爾證券投顧 · 仁者無敵',
     thumbnail: 'assets/thumbnails/chen-kunjen.jpg',
   ),
+  Analyst(
+    key: 'cai-zhenghua',
+    name: '蔡正華',
+    description: '大來國際投顧 · 理財金錢道',
+    thumbnail: 'assets/thumbnails/cai-zhenghua.jpg',
+  ),
 ];
 
 // 檔案路徑 → analyst key 對映
@@ -52,6 +58,7 @@ const _analystFiles = <String, String>{
   'assets/notes/阮蕙慈分析.md': 'ruan-huici',
   'assets/notes/李蜀芳分析.md': 'li-shufang',
   'assets/notes/陳昆仁分析.md': 'chen-kunjen',
+  'assets/notes/蔡正華分析.md': 'cai-zhenghua',
 };
 
 const _comparisonFile = 'assets/notes/分析師對照重點.md';
