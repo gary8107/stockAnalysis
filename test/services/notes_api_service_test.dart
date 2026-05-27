@@ -23,8 +23,7 @@ const _sampleIndexJson = '''
     {
       "key": "ruan-huici",
       "name": "阮蕙慈",
-      "description": "大華國際投顧",
-      "thumbnail": "assets/thumbnails/ruan-huici.jpg"
+      "description": "大華國際投顧"
     }
   ],
   "comparisons": [

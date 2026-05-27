@@ -12,6 +12,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../constants/analyst_thumbnails.dart';
 import '../../../models/analyst.dart';
 
 class AnalystBannerCarousel extends StatefulWidget {
@@ -123,7 +124,7 @@ class _AnalystBannerCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               Image.asset(
-                analyst.thumbnail,
+                analystThumbnail(analyst.key),
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => ColoredBox(
                   color: colors.surfaceContainerHigh,
@@ -157,21 +158,17 @@ class _AnalystBannerCard extends StatelessWidget {
                   children: [
                     Text(
                       analyst.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       analyst.description,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Colors.white.withValues(alpha: 0.9)),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

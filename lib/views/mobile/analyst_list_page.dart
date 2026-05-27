@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../constants/analyst_thumbnails.dart';
 import '../../models/analyst.dart';
 import '../../services/notes_api_service.dart';
 import '../../viewmodels/home_view_model.dart';
@@ -166,7 +167,7 @@ class _AnalystImageCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Image.asset(
-              analyst.thumbnail,
+              analystThumbnail(analyst.key),
               fit: BoxFit.cover,
               // 縮圖檔損毀 / 路徑誤植時不讓整頁 crash，給一個友善 fallback
               errorBuilder: (context, error, stackTrace) => ColoredBox(

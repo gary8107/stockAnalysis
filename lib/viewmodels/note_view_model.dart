@@ -3,7 +3,8 @@
 // NotePage 的 ViewModel。Phase 2.5 起依賴 NotesApiService。
 //
 // 接收 analystKey，從 NotesIndex.notes 過濾出該分析師的 entries，
-// 並從 NotesIndex.analysts 查 metadata（name / description / thumbnail）。
+// 並從 NotesIndex.analysts 查 metadata（name / description）。
+// 縮圖不再放 metadata，改由 constants/analyst_thumbnails.dart 在 view 端依 key 取。
 //
 // 跟 Phase 2 版本的差別：
 // - 不再持有 NoteSource（已淘汰）；改用 analystKey 字串對映 Analyst

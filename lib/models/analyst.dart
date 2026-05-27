@@ -12,7 +12,6 @@ class Analyst {
     required this.key,
     required this.name,
     required this.description,
-    required this.thumbnail,
   });
 
   /// 唯一識別 slug（kebab-case 英文），例如 "ruan-huici"
@@ -24,20 +23,15 @@ class Analyst {
   /// 投顧公司 / 節目 一行描述
   final String description;
 
-  /// 縮圖 asset path，例如 "assets/thumbnails/ruan-huici.jpg"
-  final String thumbnail;
-
   factory Analyst.fromJson(Map<String, dynamic> json) => Analyst(
         key: json['key'] as String,
         name: json['name'] as String,
         description: json['description'] as String,
-        thumbnail: json['thumbnail'] as String,
       );
 
   Map<String, dynamic> toJson() => {
         'key': key,
         'name': name,
         'description': description,
-        'thumbnail': thumbnail,
       };
 }

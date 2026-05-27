@@ -31,25 +31,21 @@ const _analysts = <Analyst>[
     key: 'ruan-huici',
     name: '阮蕙慈',
     description: '大華國際投顧 · 金融阮實力',
-    thumbnail: 'assets/thumbnails/rhc_0.jpg',
   ),
   Analyst(
     key: 'li-shufang',
     name: '李蜀芳',
     description: '永誠國際投顧 · 股市全芳位',
-    thumbnail: 'assets/thumbnails/lsf_0.jpg',
   ),
   Analyst(
     key: 'chen-kunjen',
     name: '陳昆仁(大仁哥)',
     description: '摩爾證券投顧 · 仁者無敵',
-    thumbnail: 'assets/thumbnails/ckj_0.jpg',
   ),
   Analyst(
     key: 'cai-zhenghua',
     name: '蔡正華',
     description: '大來國際投顧 · 理財金錢道',
-    thumbnail: 'assets/thumbnails/cai-zhenghua.jpg',
   ),
 ];
 
