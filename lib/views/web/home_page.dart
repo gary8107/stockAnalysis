@@ -111,22 +111,35 @@ class _Banner extends StatelessWidget {
           colors: [colors.primary, colors.primaryContainer],
         ),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '分析師對照資料',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: colors.onPrimary,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '分析師對照資料',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: colors.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  '同日多位分析師觀點比對',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colors.onPrimary.withValues(alpha: 0.85),
+                      ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '同日多位分析師觀點比對',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.onPrimary.withValues(alpha: 0.85),
-                ),
+          // 右上角設定入口（web 沒有 BottomNav，設定改放這裡）
+          IconButton(
+            icon: Icon(Icons.settings_outlined, color: colors.onPrimary),
+            onPressed: () => context.push('/settings'),
+            tooltip: '設定',
           ),
         ],
       ),

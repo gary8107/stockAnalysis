@@ -17,9 +17,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/theme_provider.dart';
 import 'services/notes_api_service.dart';
 import 'views/web/home_page.dart';
 import 'views/shared/note_page.dart';
+import 'views/shared/settings_page.dart';
 
 void main() {
   runApp(const StockAnalysisApp());
@@ -43,6 +45,11 @@ final _router = GoRouter(
         return NotePage(analystKey: key);
       },
     ),
+    GoRoute(
+      // web 沒有 BottomNav，設定從 HomePage 右上角齒輪 push 進來
+      path: '/settings',
+      builder: (context, state) => const SettingsPage(),
+    ),
   ],
 );
 
@@ -59,25 +66,42 @@ class StockAnalysisApp extends StatelessWidget {
         Provider<NotesApiService>(
           create: (_) => notesApiService ?? NotesApiService(),
         ),
+        ChangeNotifierProvider<ThemeProvider>(
+          create: (_) => ThemeProvider(),
+        ),
       ],
-      child: MaterialApp.router(
-        title: '分析師筆記',
-        debugShowCheckedModeBanner: false,
-        routerConfig: _router,
-        // Material 3 + 動態色：之後可以改成跟分析師對應的色彩
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        ),
-        darkTheme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.indigo,
-            brightness: Brightness.dark,
+      // Consumer 包住 MaterialApp：設定 Tab 改 ThemeProvider 時，themeMode 與
+      // 字級（textScaler）都即時跟著重建
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) => MaterialApp.router(
+          title: '分析師筆記',
+          debugShowCheckedModeBanner: false,
+          routerConfig: _router,
+          // Material 3 + 動態色：之後可以改成跟分析師對應的色彩
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
           ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.indigo,
+              brightness: Brightness.dark,
+            ),
+          ),
+          // 深淺色由設定 Tab 控制（淺 / 深 / 跟隨系統），持久化在 ThemeProvider
+          themeMode: themeProvider.themeMode,
+          // 字級：用使用者設定的 textScale 覆寫全 App 文字縮放
+          builder: (context, child) {
+            final mediaQuery = MediaQuery.of(context);
+            return MediaQuery(
+              data: mediaQuery.copyWith(
+                textScaler: TextScaler.linear(themeProvider.textScale),
+              ),
+              child: child!,
+            );
+          },
         ),
-        // 跟系統深淺色——之後 Phase 4 加手動切換 button
-        themeMode: ThemeMode.system,
       ),
     );
   }

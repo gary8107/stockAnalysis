@@ -10,9 +10,9 @@
 
 import 'package:flutter/material.dart';
 
+import '../shared/settings_page.dart';
 import 'analyst_list_page.dart';
 import 'comparison_home_page.dart';
-import 'settings_page.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
