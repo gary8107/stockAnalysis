@@ -16,12 +16,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../models/analyst.dart';
-import '../models/note_entry.dart';
-import '../services/notes_api_service.dart';
-import '../viewmodels/home_view_model.dart';
-import 'widgets/block_renderer.dart';
-import 'widgets/date_tab_bar.dart';
+import '../../constants/analyst_thumbnails.dart';
+import '../../models/analyst.dart';
+import '../../models/note_entry.dart';
+import '../../services/notes_api_service.dart';
+import '../../viewmodels/home_view_model.dart';
+import '../shared/widgets/block_renderer.dart';
+import '../shared/widgets/date_tab_bar.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -110,22 +111,35 @@ class _Banner extends StatelessWidget {
           colors: [colors.primary, colors.primaryContainer],
         ),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '分析師對照資料',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: colors.onPrimary,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '分析師對照資料',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: colors.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  '同日多位分析師觀點比對',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colors.onPrimary.withValues(alpha: 0.85),
+                      ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '同日多位分析師觀點比對',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.onPrimary.withValues(alpha: 0.85),
-                ),
+          // 右上角設定入口（web 沒有 BottomNav，設定改放這裡）
+          IconButton(
+            icon: Icon(Icons.settings_outlined, color: colors.onPrimary),
+            onPressed: () => context.push('/settings'),
+            tooltip: '設定',
           ),
         ],
       ),
@@ -206,7 +220,7 @@ class _AnalystMiniCard extends StatelessWidget {
               width: 96,
               height: 80,
               child: Image.asset(
-                analyst.thumbnail,
+                analystThumbnail(analyst.key),
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => ColoredBox(
                   color: Theme.of(context).colorScheme.surfaceContainerHigh,

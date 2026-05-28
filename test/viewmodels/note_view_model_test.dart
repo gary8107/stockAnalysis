@@ -31,14 +31,12 @@ const _ruan = Analyst(
   key: 'ruan-huici',
   name: '阮蕙慈',
   description: '大華國際投顧',
-  thumbnail: 'assets/thumbnails/ruan-huici.jpg',
 );
 
 const _li = Analyst(
   key: 'li-shufang',
   name: '李蜀芳',
   description: '永誠國際投顧',
-  thumbnail: 'assets/thumbnails/li-shufang.jpg',
 );
 
 final _ruanEntry1 = NoteEntry(

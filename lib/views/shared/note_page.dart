@@ -13,10 +13,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../models/analyst.dart';
-import '../models/note_entry.dart';
-import '../services/notes_api_service.dart';
-import '../viewmodels/note_view_model.dart';
+import '../../constants/analyst_thumbnails.dart';
+import '../../models/analyst.dart';
+import '../../models/note_entry.dart';
+import '../../services/notes_api_service.dart';
+import '../../viewmodels/note_view_model.dart';
 import 'widgets/block_renderer.dart';
 import 'widgets/date_tab_bar.dart';
 
@@ -256,7 +257,7 @@ class _NoteBanner extends StatelessWidget {
               width: 96,
               height: 54,
               child: Image.asset(
-                analyst.thumbnail,
+                analystThumbnail(analyst.key),
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => ColoredBox(
                   color: colors.surfaceContainerHigh,

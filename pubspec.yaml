@@ -42,6 +42,9 @@ dependencies:
   # State management：跟 SwiftUI @ObservedObject 同個概念
   provider: ^6.1.2
   http: ^1.6.0
+  shared_preferences: ^2.5.5
+  package_info_plus: ^10.1.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

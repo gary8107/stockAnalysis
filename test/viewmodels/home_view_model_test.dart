@@ -50,7 +50,6 @@ const _sampleAnalyst = Analyst(
   key: 'ruan-huici',
   name: '阮蕙慈',
   description: '大華國際投顧',
-  thumbnail: 'assets/thumbnails/ruan-huici.jpg',
 );
 
 final _sampleComparison = NoteEntry(

@@ -12,8 +12,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-import '../../models/note_block.dart';
-import '../../theme/markdown_styles.dart';
+import '../../../models/note_block.dart';
+import '../../../theme/markdown_styles.dart';
 import 'compact_table_view.dart';
 
 class BlockRenderer extends StatelessWidget {

@@ -1,6 +1,7 @@
 // widget_test.dart
 //
-// 最小 smoke test：確認 App 能起來、首頁標題渲染出來。
+// 最小 smoke test：確認 **Web entry**（main.dart）能起來、HomePage Banner 標題渲染出來。
+// Mobile entry 的測試在 widget_test_mobile.dart。
 //
 // Phase 2.5 後 NotesApiService 從遠端 fetch JSON，test 環境拉不到真 endpoint，
 // 所以注入 fake service 返回 minimal valid NotesIndex，讓 HomePage 走到
@@ -21,7 +22,7 @@ class _FakeNotesApi extends NotesApiService {
 }
 
 void main() {
-  testWidgets('App starts and shows home banner title', (tester) async {
+  testWidgets('Web entry shows HomePage banner title', (tester) async {
     final fakeIndex = NotesIndex(
       version: '1.0',
       generatedAt: DateTime.utc(2026, 5, 18),
@@ -44,6 +45,7 @@ void main() {
     // 等所有 frame 跑完（包含 router 初始化 + 假 API future 完成 + Consumer 重 build）
     await tester.pumpAndSettle();
 
+    // HomePage Banner 中央大字「分析師對照資料」
     expect(find.text('分析師對照資料'), findsOneWidget);
   });
 }
