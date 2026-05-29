@@ -68,39 +68,45 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: AnalystBannerCarousel(
-            analysts: analysts,
-            // push 而非 go：保留底部 BottomNav 的 Tab state，返回鍵 pop 回對照頁
-            onAnalystTap: (analyst) =>
-                context.push('/note/${analyst.key}'),
+    // Banner 移出 CustomScrollView、改放進 Column 的固定區：
+    // 這樣下滑捲動時 Banner 會固定在頂部（AppBar 下方），不會跟著清單滾上去。
+    // 只有下半部的「對照日期」清單包在 Expanded 內、可獨立捲動。
+    return Column(
+      children: [
+        AnalystBannerCarousel(
+          analysts: analysts,
+          // push 而非 go：保留底部 BottomNav 的 Tab state，返回鍵 pop 回對照頁
+          onAnalystTap: (analyst) => context.push('/note/${analyst.key}'),
+        ),
+        Expanded(
+          child: CustomScrollView(
+            slivers: [
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    '對照日期',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              SliverList.separated(
+                itemCount: comparisons.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final entry = comparisons[index];
+                  return _DateListTile(
+                    entry: entry,
+                    // push 而非 go：返回鍵 pop 回對照首頁，保留捲動位置與 BottomNav state
+                    onTap: () => context.push('/comparison/${entry.date}'),
+                  );
+                },
+              ),
+              // 底部留空避免最後一筆貼著螢幕底邊
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
           ),
         ),
-        const SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              '對照日期',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        SliverList.separated(
-          itemCount: comparisons.length,
-          separatorBuilder: (context, index) => const Divider(height: 1),
-          itemBuilder: (context, index) {
-            final entry = comparisons[index];
-            return _DateListTile(
-              entry: entry,
-              // push 而非 go：返回鍵 pop 回對照首頁，保留捲動位置與 BottomNav state
-              onTap: () => context.push('/comparison/${entry.date}'),
-            );
-          },
-        ),
-        // 底部留空避免最後一筆貼著螢幕底邊
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );
   }
