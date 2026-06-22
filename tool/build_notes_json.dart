@@ -63,10 +63,10 @@ const _outputPath = 'web/api/notes.json';
 void main(List<String> args) {
   final stopwatch = Stopwatch()..start();
 
-  final comparisons = _parseFile(_comparisonFile, analystKey: null);
+  final comparisons = _parseWithArchives(_comparisonFile, analystKey: null);
   final notes = <NoteEntry>[];
   for (final entry in _analystFiles.entries) {
-    notes.addAll(_parseFile(entry.key, analystKey: entry.value));
+    notes.addAll(_parseWithArchives(entry.key, analystKey: entry.value));
   }
 
   final index = NotesIndex(
@@ -90,6 +90,35 @@ void main(List<String> args) {
     '— ${comparisons.length} comparison entries, ${notes.length} analyst entries '
     'in ${stopwatch.elapsedMilliseconds}ms',
   );
+}
+
+// active 主檔 + 對應的 archive/{stem}_YYYY-MM.md 一起讀，讓 App 仍看得到全部歷史。
+// 為什麼不依日期去重：陳昆仁同一天有盤前/盤後兩個區段（同 date），去重會誤刪其中一段。
+// 正常情況下一個日期區段只會存在於 active 或 archive 其中一處（歸檔是「搬移」不是複製），
+// 所以直接串接即可；active 在前(最新)、archive 依檔名(YYYY-MM)由新到舊接在後面。
+List<NoteEntry> _parseWithArchives(String activePath, {required String? analystKey}) {
+  final entries = <NoteEntry>[];
+  entries.addAll(_parseFile(activePath, analystKey: analystKey));
+
+  final slash = activePath.lastIndexOf('/');
+  final dir = slash == -1 ? '.' : activePath.substring(0, slash);
+  final base = activePath.substring(slash + 1);
+  final stem = base.endsWith('.md') ? base.substring(0, base.length - 3) : base;
+
+  final archiveDir = Directory('$dir/archive');
+  if (archiveDir.existsSync()) {
+    final files =
+        archiveDir.listSync().whereType<File>().where((f) {
+          final name = f.uri.pathSegments.last;
+          return name.startsWith('${stem}_') && name.endsWith('.md');
+        }).toList()
+          // 檔名含 YYYY-MM，反向排序＝新月份在前，維持整體最新在上
+          ..sort((a, b) => b.path.compareTo(a.path));
+    for (final f in files) {
+      entries.addAll(_parseFile(f.path, analystKey: analystKey));
+    }
+  }
+  return entries;
 }
 
 List<NoteEntry> _parseFile(String path, {required String? analystKey}) {

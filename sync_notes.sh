@@ -19,6 +19,15 @@ cp "$SOURCE/陳昆仁分析.md"       "$DEST/"
 cp "$SOURCE/蔡正華分析.md"       "$DEST/"
 cp "$SOURCE/分析師對照重點.md" "$DEST/"
 
+# 同步 archive/ 子資料夾（歸檔的舊月份）。build_notes_json.dart 會一併讀入，
+# App 才看得到全部歷史。用 rsync --delete 讓 dest 與 source 完全一致（含移除已不存在的）。
+# archive/ 內只會有我們歸檔的 .md，不怕夾帶雜檔。來源還沒有 archive/ 時就跳過。
+if [ -d "$SOURCE/archive" ]; then
+  mkdir -p "$DEST/archive"
+  rsync -a --delete "$SOURCE/archive/" "$DEST/archive/"
+  echo "✅ Synced archive/ from 分析師筆記/archive/ to assets/notes/archive/"
+fi
+
 echo "✅ Synced 5 notes from 分析師筆記/ to assets/notes/"
 ls -la "$DEST"
 
